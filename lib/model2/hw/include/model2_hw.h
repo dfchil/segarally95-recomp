@@ -22,6 +22,12 @@ void model2_hw_reset(void);
 void model2_hw_mmio_write(u32 offset, u32 value);
 u32 model2_hw_mmio_read(u32 offset);
 
+/* Timers @ 0xf00000..0xf0000c. Countdown at 25 MHz. */
+int model2_hw_timer_ea(u32 offset);
+void model2_hw_timer_write(u32 offset, u32 value);
+u32 model2_hw_timer_read(u32 offset);
+void model2_hw_timers_reset(void);
+
 /* videoctl @ 0x98000c — timer/SDL toggles bit 2; geo_vsync_wait blocks on edge. */
 int model2_hw_vsync_realtime(void);
 void model2_hw_vsync_hw_reset(void);

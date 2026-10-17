@@ -35,6 +35,7 @@ void game_start_race_obj_car_peer(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_yaw_step(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_motion(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_integrate(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_obj_car_e8_mode1(u32 node);
 void game_start_race_obj_car_e8_mode2(u32 node, u32 span_base);
 
 static u32 frame_ld(u8 *frame, u32 off)
@@ -481,9 +482,11 @@ after_mode:
         g0 = node;
         g1 = span_base;
         game_start_race_obj_car_motion(node, span_base, 0);
+        /* @0x2C018 mov r5,g0; mov r6,g1; call 0x2e650.
+         * The body uses g0 (the node). span_base stays in g1. */
         g0 = node;
         g1 = span_base;
-        i960_call_rom(0x2e650);
+        game_start_race_obj_car_e8_mode1(node);
     } else if (e8 == 2u) {
         /* @0x2C020 call road_span, then body @ 0x2C02C and call 0x2EEF0. */
         game_start_race_obj_car_e8_mode2(node, span_base);

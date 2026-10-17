@@ -236,6 +236,9 @@ u32 i960_ld_u32(i960_space space, u32 base, u32 offset)
     ea = base + offset;
     if (i960_sound_uart_ea(ea))
         return model2_snd_mmio_read(ea);
+    /* Race frame ldl 0xf00008 reads timer 3 at 0xf0000c via i960_ld, not mmio_read. */
+    if (model2_hw_timer_ea(ea))
+        return model2_hw_timer_read(ea);
 
     /* Copro / geo MMIO — must pop HLE FIFO (vec_scale normalize readback). */
     if (space == I960_MMIO

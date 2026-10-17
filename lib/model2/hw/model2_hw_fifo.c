@@ -189,6 +189,7 @@ void model2_hw_reset(void)
     g_geo_write_ptr = 0;
     model2_tgp_reset();
     pthread_mutex_unlock(&g_fifo_mtx);
+    model2_hw_timers_reset();
     model2_hw_vsync_hw_reset();
 }
 
@@ -211,6 +212,8 @@ u32 model2_hw_mmio_read(u32 offset)
 {
     u32 v;
 
+    if (model2_hw_timer_ea(offset))
+        return model2_hw_timer_read(offset);
     if (offset == VIDEO_CTL_OFF)
         return model2_hw_video_ctl_read();
     if (offset == GEO_WRITE_PTR_OFF)
@@ -508,6 +511,10 @@ void model2_hw_mmio_write(u32 offset, u32 value)
 {
     int notify = 0;
 
+    if (model2_hw_timer_ea(offset)) {
+        model2_hw_timer_write(offset, value);
+        return;
+    }
     if (offset == GEO_WRITE_PTR_OFF) {
         g_geo_write_ptr = value;
         return;
