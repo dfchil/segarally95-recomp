@@ -11,6 +11,17 @@
 
 #include <stdio.h>
 
+void game_start_race_course_obj_draw_16(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_16(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_17(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_17(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_18(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_18(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_20(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_20(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_19(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_19(u32 arg0, u32 arg1, u32 arg2);
+
 #define GAME_MODE_DISPATCH_BASE 0x005a2110u
 
 int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
@@ -289,6 +300,36 @@ int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
         return 1;
     case 0x0002bb50u:
         game_start_race_course_obj_draw_21((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00044f00u:
+        game_start_race_course_obj_draw_16((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x000451e0u:
+        game_start_race_course_obj_init_16((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045240u:
+        game_start_race_course_obj_draw_17((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045350u:
+        game_start_race_course_obj_init_17((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045380u:
+        game_start_race_course_obj_draw_18((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045550u:
+        game_start_race_course_obj_init_18((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045980u:
+        game_start_race_course_obj_draw_20((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045ae0u:
+        game_start_race_course_obj_init_20((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045580u:
+        game_start_race_course_obj_draw_19((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00045920u:
+        game_start_race_course_obj_init_19((u32)g0, (u32)g1, (u32)g2);
         return 1;
     case 0x00043790u:
         game_start_race_desert_node_init((u32)g0, (u32)g1, (u32)g2);

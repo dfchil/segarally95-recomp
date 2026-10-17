@@ -55,7 +55,12 @@ void game_start_race_slot4(u32 arg0, u32 arg1, u32 arg2)
         i960_st_u32(I960_WORKRAM, 0x20ab60, 0, 0u);
         i960_st_u32(I960_WORKRAM, 0x20a564, 0, 7u);
 
-        if ((i32)timer > 0)
+        /*
+         * @0x1D6FC cmpible 0,g4 → 0x1D718 when g4 >= 0.
+         * g4 < 0 selects glyph 2 (SAS_FINISH). In-time split is
+         * 0x20ac70: nonzero → glyph 0, zero → glyph 1.
+         */
+        if ((i32)timer < 0)
             g3 = 2;
         else if (i960_ld_u32(I960_WORKRAM, 0x20ac70, 0) != 0u)
             g3 = 0;

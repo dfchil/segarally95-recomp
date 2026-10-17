@@ -53,8 +53,11 @@ void game_start_race_slot5(u32 arg0, u32 arg1, u32 arg2)
         i960_st_u32(I960_WORKRAM, 0x20a770, 0, 0u);
         i960_st_u32(I960_WORKRAM, 0x20a564, 0, 8u);
 
-        /* @0x1D958–0x1D9B0: g3 select then catalog_draw_setup. */
-        if ((i32)timer > 0)
+        /*
+         * @0x1D958 cmpible 0,g4 → 0x1D974 when g4 >= 0.
+         * g4 < 0 selects glyph 3. In-time split matches slot4.
+         */
+        if ((i32)timer < 0)
             g3 = 3;
         else if (i960_ld_u32(I960_WORKRAM, 0x20ac70, 0) != 0u)
             g3 = 0;
