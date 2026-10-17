@@ -32,14 +32,16 @@ void geo_attract_pen_prg_push_b(uintptr_t obj, uintptr_t obj18, u32 wr_base)
     g4 = wr_base;
     g5 = pen_mode;
     opcode = geo_attract_pen_angle_push(0, 0, 0);
+    /* call 0x3ed20 @ 0x3EF2C; st g14 is the link 0x3EF30, including quad +0xc. */
+    g14 = 0x3ef30u;
 
     bank = i960_ld_u32(I960_WORKRAM, 0x202278, 0) & 3u;
-    i960_mmio_write_u32(0x800010u + (bank << 10), 0u);
+    i960_mmio_write_u32(0x800010u + (bank << 10), (u32)g14);
 
     w2 = i960_ld_u32(I960_WORKRAM, rec, 8);
     w3 = i960_ld_u32(I960_WORKRAM, rec, 12);
     i960_mmio_write_u32(GEO_PRG_FIFO, opcode);
     i960_mmio_write_u32(GEO_PRG_FIFO, w2);
     i960_mmio_write_u32(GEO_PRG_FIFO, w3);
-    i960_mmio_write_u32(GEO_PRG_FIFO, 0u);
+    i960_mmio_write_u32(GEO_PRG_FIFO, (u32)g14);
 }

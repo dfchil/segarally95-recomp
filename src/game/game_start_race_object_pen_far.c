@@ -5,8 +5,9 @@
  * desert object_pen(follow) remained (rear-to-cam cancel).
  *
  * Disasm: push → 0x27 raw XYZ → yaw/pitch/roll → wr_slot → half-extent from
- * obj+0x30..0x3c → catalog pen+0xc with Y+=half → three catalogs from pen+8
- * → pop. pen+0 is a pointer to a 3-float local offset.
+ * obj+0x30..0x3c → catalog pen+0xc with Y+=half → four catalogs from pen+8
+ * → pop. pen+0 is a pointer to a 3-float local offset. Each pen+8 add
+ * to 0x20b940 is that quad's word3.
  *
  * g0 = pen VA, g1 = pose guest VA, g2 = budget.
  *
@@ -24,11 +25,12 @@
 
 #include <stdio.h>
 
-static void geo_bank_poke0(void)
+/* call 0x24560 @ 0x2495C leaves g14 = 0x24960. Both bank pokes store it. */
+static void geo_bank_poke_g14(void)
 {
     u32 bank = i960_ld_u32(I960_WORKRAM, 0x202278, 0) & 3u;
 
-    i960_mmio_write_u32(0x800010u + (bank << 10), 0u);
+    i960_mmio_write_u32(0x800010u + (bank << 10), (u32)g14);
 }
 
 static void wr_slot_bind(void)
@@ -44,7 +46,7 @@ static void wr_slot_bind(void)
 
 static void prg_stq_words(u32 w0, u32 w1, u32 w2, u32 w3)
 {
-    geo_bank_poke0();
+    geo_bank_poke_g14();
     i960_mmio_write_u32(GEO_PRG_FIFO, w0);
     i960_mmio_write_u32(GEO_PRG_FIFO, w1);
     i960_mmio_write_u32(GEO_PRG_FIFO, w2);
@@ -71,7 +73,6 @@ void game_start_race_object_pen_far(u32 arg0, u32 arg1, u32 arg2)
     u32 half;
     u32 i;
     u32 w0, w1, w2, w3;
-    u32 first_w3;
     static int logged;
 
     obj = model2_ram_mut(obj_va);
@@ -79,6 +80,8 @@ void game_start_race_object_pen_far(u32 arg0, u32 arg1, u32 arg2)
         return;
 
     obj_w = (u32 *)(void *)obj;
+    /* @0x2495C call 0x24560; st g14 @ 0x246A8 / 0x24770 is that link. */
+    g14 = 0x24960u;
     pen_hdr = model2_workram_mirror_u32(pen_va);
     if (pen_hdr == 0u)
         return;
@@ -127,11 +130,14 @@ void game_start_race_object_pen_far(u32 arg0, u32 arg1, u32 arg2)
     w1 = catalog_word(cat_ix, 4);
     w2 = catalog_word(cat_ix, 8);
     w3 = catalog_word(cat_ix, 12);
+    /*
+     * @0x246B8 movt keeps the original ldq. cmpobge may replace g2
+     * for the 0x20b940 add; stq @ 0x246DC submits the original word3.
+     */
     take = w3;
     if (remain != 0u && w3 >= remain)
         take = remain;
-    first_w3 = take;
-    prg_stq_words(w0, w1, w2, take);
+    prg_stq_words(w0, w1, w2, w3);
 
     {
         u32 bank = i960_ld_u32(I960_WORKRAM, 0x20b940, 0);
@@ -149,9 +155,13 @@ void game_start_race_object_pen_far(u32 arg0, u32 arg1, u32 arg2)
         wr_slot_bind();
     }
 
-    /* @0x24754–0x247B4: three catalogs from pen+8; bank += first take each. */
+    /*
+     * @0x2472C–0x247B4: g1 starts at 0, increments, cmpi 3 / ble.
+     * Four catalogs from pen+8. ldq word3 (r7) is what addo stores
+     * into 0x20b940 — not the earlier body take.
+     */
     cat_ix = model2_workram_mirror_u32(pen_va + 8u);
-    for (i = 0; i < 3u; i++) {
+    for (i = 0; i < 4u; i++) {
         u32 bank = i960_ld_u32(I960_WORKRAM, 0x20b940, 0);
 
         w0 = catalog_word(cat_ix, 0);
@@ -159,7 +169,7 @@ void game_start_race_object_pen_far(u32 arg0, u32 arg1, u32 arg2)
         w2 = catalog_word(cat_ix, 8);
         w3 = catalog_word(cat_ix, 12);
         prg_stq_words(w0, w1, w2, w3);
-        i960_st_u32(I960_WORKRAM, 0x20b940, 0, bank + first_w3);
+        i960_st_u32(I960_WORKRAM, 0x20b940, 0, bank + w3);
         wr_slot_bind();
     }
 

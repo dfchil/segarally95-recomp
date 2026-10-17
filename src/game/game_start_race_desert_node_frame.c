@@ -46,11 +46,12 @@ static i32 ld_s16(u32 ea)
     return (i32)(signed short)(u16)i960_ld_u16(I960_ABS, ea, 0);
 }
 
-static void geo_bank_poke0(void)
+/* @0x42D48 / 0x42F70 / 0x4306C / 0x43178: st g14,(0x800010+bank). */
+static void geo_bank_poke_g14(void)
 {
     u32 bank = i960_ld_u32(I960_WORKRAM, 0x202278, 0) & 3u;
 
-    i960_mmio_write_u32(0x800010u + (bank << 10), 0u);
+    i960_mmio_write_u32(0x800010u + (bank << 10), (u32)g14);
 }
 
 static u32 prg_stq_main_data(u32 vaddr)
@@ -64,7 +65,7 @@ static u32 prg_stq_main_data(u32 vaddr)
     memcpy(&w1, p + 4, 4);
     memcpy(&w2, p + 8, 4);
     memcpy(&w3, p + 12, 4);
-    geo_bank_poke0();
+    geo_bank_poke_g14();
     i960_mmio_write_u32(GEO_PRG_FIFO, w0);
     i960_mmio_write_u32(GEO_PRG_FIFO, w1);
     i960_mmio_write_u32(GEO_PRG_FIFO, w2);
@@ -82,7 +83,6 @@ static void geo_wr_slot_bind_05(void)
         i960_st_u32(I960_WORKRAM, slot, 0, wr);
     i960_mmio_write_u32(0x884000, 0x02800505u);
     i960_mmio_write_u32(0x801008, wr + 0x34u);
-    geo_bank_poke0();
 }
 
 void game_start_race_desert_node_frame(u32 arg0, u32 arg1, u32 arg2)
@@ -112,7 +112,6 @@ void game_start_race_desert_node_frame(u32 arg0, u32 arg1, u32 arg2)
     memset(frame, 0, sizeof(frame));
     fp = (uintptr_t)frame;
     sp = sp + 0xa0;
-    g14 = 0;
     node = arg0;
 
     /*
@@ -155,6 +154,12 @@ void game_start_race_desert_node_frame(u32 arg0, u32 arg1, u32 arg2)
             }
         }
     }
+
+    /*
+     * bal 0x41b78 @ 0x42858 leaves g14 = 0x4285C. The 0x58 pair and the
+     * node+0x5c store use that link; the function never clears g14.
+     */
+    g14 = 0x4285cu;
 
     /* @0x427F4–0x42854: TGP 0x58 with view/node angles → 0xb0(fp). */
     view = i960_ld_u32(I960_WORKRAM, 0x216a54, 0);
@@ -317,6 +322,9 @@ void game_start_race_desert_node_frame(u32 arg0, u32 arg1, u32 arg2)
      */
     model2_hw_restore_latched_view_matrix();
 
+    /* call 0x2acc0 @ 0x42B34 returns to 0x42B38; later st g14 use that link. */
+    g14 = 0x42b38u;
+
     /* @0x42B38–0x42E4C: optional close-up scale/catalog when 0x5c(fp) small. */
     {
         u32 gate = frame_u32(frame, 0x5c);
@@ -431,6 +439,8 @@ void game_start_race_desert_node_frame(u32 arg0, u32 arg1, u32 arg2)
     geo_attract_pen_prg_push_b((uintptr_t)(node + 0x18u),
                                (uintptr_t)(node + 0x24u),
                                0x20220cu);
+    /* call 0x3ef10 @ 0x42FD8; g14 is 0x42FDC for the 7a0/7b0 pokes and 0x27. */
+    g14 = 0x42fdcu;
     i960_mmio_write_u32(0x884000, 0x10802121u);
     i960_mmio_write_u32(0x884000, 0x10002020u);
     i960_mmio_write_u32(0x884000, 0x15002a2au);

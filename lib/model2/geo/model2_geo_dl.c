@@ -170,27 +170,22 @@ static int object_data(model2_geo_dl_ctx_t *ctx, model2_geo_state_t *geo, u32 op
      */
     geo->center_sel = (u16)((opcode >> 29) & 3u);
     /*
-     * Encodings (MAME geo_object_data always reads 4 payload words):
-     *   geo_w object opcode 0x00800000 + tpa,tha,oba,obc — catalog / pen with bank poke
-     *   Legacy packed 0x008001xx|… as cmd+tpa, then tha,oba,obc — only if geo_w missing
+     * geo_w function 1 (port 0x800010) pushes
+     *   (data & 0xfffff) | (1<<23) | optional eye bits.
+     * Championship pen_mid @ 0x240C0 stores g14 (the 0x24970 return
+     * address) as that data, so the opcode low bits are nonzero.
+     * The command still has four payload words (tpa, tha, oba, obc).
+     * Treating the low bits as a packed tpa and reading three words
+     * shifts every later catalog — road and ground drop out after the
+     * first rival. Practice never takes this pen.
      */
-    if ((opcode & 0x007fffffu) == 0u) {
-        if (!require(index, 4, end_limit))
-            return fail(out, "object_data overflow");
-        tpa = words[index];
-        tha = words[index + 1];
-        oba = words[index + 2];
-        obc = words[index + 3];
-        index += 4;
-    } else {
-        if (!require(index, 3, end_limit))
-            return fail(out, "object_data overflow");
-        tpa = opcode;
-        tha = words[index];
-        oba = words[index + 1];
-        obc = words[index + 2];
-        index += 3;
-    }
+    if (!require(index, 4, end_limit))
+        return fail(out, "object_data overflow");
+    tpa = words[index];
+    tha = words[index + 1];
+    oba = words[index + 2];
+    obc = words[index + 3];
+    index += 4;
 
     /*
      * MAME model2_v.cpp geo_object_data: RAM0 / RAM1 / ROM select, then

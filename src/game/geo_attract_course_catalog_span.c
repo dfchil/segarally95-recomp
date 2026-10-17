@@ -126,17 +126,19 @@ void geo_attract_course_catalog_span(u32 rec_va, u32 span_a, u32 span_b)
         w2 = i960_ld_u32(I960_ROM, cat_base, 8);
         w3 = i960_ld_u32(I960_ROM, cat_base, 12);
 
-        if (remain == 0u)
+        /*
+         * @0x3B914 movt keeps the original ldq in r12. The cmpobge clamp
+         * (g5) is only added to 0x20b940. stq @ 0x3B94C submits word3.
+         */
+        if (remain == 0u || w3 < remain)
             take = w3;
-        else if (w3 >= remain)
-            take = remain;
         else
-            take = w3;
+            take = remain;
 
         i960_mmio_write_u32(GEO_PRG_FIFO, w0);
         i960_mmio_write_u32(GEO_PRG_FIFO, w1);
         i960_mmio_write_u32(GEO_PRG_FIFO, w2);
-        i960_mmio_write_u32(GEO_PRG_FIFO, take);
+        i960_mmio_write_u32(GEO_PRG_FIFO, w3);
 
         bank_ctr = i960_ld_u32(I960_WORKRAM, 0x20b940, 0);
         i960_st_u32(I960_WORKRAM, 0x20b940, 0, bank_ctr + take);
