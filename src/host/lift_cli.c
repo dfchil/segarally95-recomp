@@ -71,6 +71,9 @@ void track_viewer_cli_help(void)
             "                         also: I960_HOST_SKIP_PRACTICE=1\n"
             "  --region NAME          cabinet region: international (default), japan, or us\n"
             "                         overrides the NVRAM country byte (0x202019)\n"
+            "  --game-mode NAME       GAME MODE (0x20201d): normal, short, long, longest\n"
+            "                         championship clocks: short and long match normal;\n"
+            "                         longest uses the longer rank-list rows\n"
             "  --record FILE          pipe live frames to ffmpeg (*.avi=mjpeg, else x264)\n"
             "                         async writer; drops frames if encode lags (low latency)\n"
             "                         also: I960_HOST_RECORD=FILE or press R in the window\n"
@@ -179,6 +182,15 @@ int track_viewer_cli_parse(int argc, char **argv, track_viewer_opts_t *opts)
             if (i + 1 >= argc || model2_nvram_set_region_name(argv[i + 1]) != 0) {
                 fprintf(stderr,
                         "lift: --region expects international, japan, or us\n");
+                return -1;
+            }
+            i++;
+            continue;
+        }
+        if (streq(argv[i], "--game-mode")) {
+            if (i + 1 >= argc || model2_nvram_set_game_mode_name(argv[i + 1]) != 0) {
+                fprintf(stderr,
+                        "lift: --game-mode expects normal, short, long, or longest\n");
                 return -1;
             }
             i++;

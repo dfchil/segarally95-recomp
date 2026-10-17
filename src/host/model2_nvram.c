@@ -46,6 +46,9 @@ static model2_nvram_t g_nvram;
 static char g_nvram_path[512];
 /* 0x202019: 0=japan, 1=us, 2=international. CLI default; overrides YAML. */
 static u8 g_region = 2;
+/* 0x20201d GAME MODE. Unset leaves NVRAM / the 0x2970 zero. */
+static int g_game_mode_set;
+static u8 g_game_mode;
 
 static const char *nvram_default_path(void)
 {
@@ -81,10 +84,17 @@ static void nvram_capture_from_host(void)
     g_nvram.have_settings = 1;
 }
 
+static void apply_game_mode(void)
+{
+    if (g_game_mode_set)
+        i960_st_u8(I960_WORKRAM, 0x20201d, 0, g_game_mode);
+}
+
 void model2_nvram_apply_options(void)
 {
     if (!g_nvram.loaded || !g_nvram.have_settings) {
         i960_st_u8(I960_WORKRAM, 0x202019, 0, g_region);
+        apply_game_mode();
         return;
     }
 
@@ -94,6 +104,7 @@ void model2_nvram_apply_options(void)
     i960_st_u8(I960_WORKRAM, 0x20201b, 0, g_nvram.flag_1b);
     i960_st_u8(I960_WORKRAM, 0x20201c, 0, g_nvram.flag_1c);
     i960_st_u8(I960_WORKRAM, 0x20201d, 0, g_nvram.flag_1d);
+    apply_game_mode();
     i960_st_u8(I960_WORKRAM, 0x20201e, 0, g_nvram.flag_1e);
     i960_st_u8(I960_WORKRAM, 0x20201f, 0, g_nvram.flag_1f);
     i960_st_u8(I960_WORKRAM, 0x202024, 0, g_nvram.option_flags);
@@ -186,6 +197,67 @@ int model2_nvram_set_region_name(const char *name)
         return -1;
     g_region = country;
     g_nvram.country = country;
+    return 0;
+}
+
+static const char *game_mode_name(u8 v)
+{
+    if (v == 1)
+        return "short";
+    if (v == 2)
+        return "long";
+    if (v == 3)
+        return "longest";
+    return "normal";
+}
+
+static int game_mode_from_name(const char *s, u8 *out)
+{
+    char tok[32];
+    size_t n = 0;
+
+    while (*s && isspace((unsigned char)*s))
+        s++;
+    while (*s && !isspace((unsigned char)*s) && *s != '#' && n + 1 < sizeof(tok)) {
+        char c = *s++;
+
+        if (c >= 'A' && c <= 'Z')
+            c = (char)(c - 'A' + 'a');
+        tok[n++] = c;
+    }
+    tok[n] = '\0';
+    if (n == 0)
+        return -1;
+    if (!strcmp(tok, "normal") || !strcmp(tok, "0")) {
+        *out = 0;
+        return 0;
+    }
+    if (!strcmp(tok, "short") || !strcmp(tok, "1")) {
+        *out = 1;
+        return 0;
+    }
+    if (!strcmp(tok, "long") || !strcmp(tok, "2")) {
+        *out = 2;
+        return 0;
+    }
+    if (!strcmp(tok, "longest") || !strcmp(tok, "3")) {
+        *out = 3;
+        return 0;
+    }
+    return -1;
+}
+
+int model2_nvram_set_game_mode_name(const char *name)
+{
+    u8 mode = 0;
+
+    if (!name || game_mode_from_name(name, &mode) != 0)
+        return -1;
+    g_game_mode = mode;
+    g_game_mode_set = 1;
+    g_nvram.flag_1d = mode;
+    lift_status("lift: game mode %s (0x20201d=%u)\n",
+                game_mode_name(mode), (unsigned)mode);
     return 0;
 }
 

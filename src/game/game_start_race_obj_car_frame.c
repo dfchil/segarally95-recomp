@@ -35,6 +35,7 @@ void game_start_race_obj_car_peer(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_yaw_step(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_motion(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_obj_car_integrate(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_obj_car_e8_mode2(u32 node, u32 span_base);
 
 static u32 frame_ld(u8 *frame, u32 off)
 {
@@ -129,23 +130,25 @@ static void car_frame_e8_mode3(u32 node, u32 span_base, u32 wrap_n, u8 *frame)
         t = 0.0;
     t2 = t;
 
-    /* @0x2C528–0x2C578: t>1 → advance 0x88 halfword + e4 with wrap. */
+    /* @0x2C528–0x2C578: t>1 → stos unwrapped sum at +0x8a, remi into +0x88. */
     if (t2 > 1.0) {
         i32 ti = (i32)t2;
-        i32 idx88;
+        u32 acc_va = node + 0x8au;
+        u32 acc;
+        i32 wrapped;
         i32 e4;
 
-        g5 = node + 0x8au;
-        idx88 = (i32)(int16_t)i960_ld_u16(I960_ABS, g5, 0);
-        idx88 += ti;
-        /* addo wrap,g4; remi wrap,g4 — keep non-negative remainder. */
+        /* @0x2C534 ldos (+0x8a); addo ti; stos back. @0x2C544 ldis;
+         * addo wrap; remi wrap; stos +0x88. 0x2140c4 is this +0x8a half. */
+        acc = (u32)i960_ld_u16(I960_ABS, acc_va, 0);
+        acc += (u32)ti;
+        i960_st_u16(I960_ABS, acc_va, 0, (u16)acc);
+        wrapped = (i32)(int16_t)i960_ld_u16(I960_ABS, acc_va, 0);
         if (wrap_n != 0u) {
-            idx88 = (i32)wrap_n + idx88;
-            idx88 = idx88 % (i32)wrap_n;
-            if (idx88 < 0)
-                idx88 += (i32)wrap_n;
+            wrapped += (i32)wrap_n;
+            wrapped %= (i32)wrap_n;
         }
-        i960_st_u16(I960_ABS, node, 0x88, (u16)idx88);
+        i960_st_u16(I960_ABS, node, 0x88, (u16)wrapped);
 
         e4 = (i32)i960_ld_u32(I960_ABS, node, 0xe4);
         e4 += ti;
@@ -276,7 +279,7 @@ void game_start_race_obj_car_frame(u32 arg0, u32 arg1, u32 arg2)
 {
     uintptr_t fp_save = fp;
     uintptr_t sp_save = sp;
-    u8 frame[0x90];
+    u8 frame[0xa0];
     u32 node = arg0;
     u32 course;
     u32 span_base;
@@ -296,7 +299,7 @@ void game_start_race_obj_car_frame(u32 arg0, u32 arg1, u32 arg2)
 
     memset(frame, 0, sizeof(frame));
     fp = (uintptr_t)frame;
-    /* @0x2BCF0: lda 0x50(sp),sp — private frame (host needs 0x88 temps). */
+    /* @0x2BCF0: lda 0x50(sp),sp — private frame. e8==2 cruise uses fp+0x90. */
     sp = sp + 0x50u;
 
     if (!logged) {
@@ -482,10 +485,8 @@ after_mode:
         g1 = span_base;
         i960_call_rom(0x2e650);
     } else if (e8 == 2u) {
-        g0 = node;
-        g1 = span_base;
-        game_start_race_obj_road_span((u32)g0, (u32)g1, 0);
-        /* @0x2C02C–0x2C438 body and call 0x2EEF0 are still unlifted. */
+        /* @0x2C020 call road_span, then body @ 0x2C02C and call 0x2EEF0. */
+        game_start_race_obj_car_e8_mode2(node, span_base);
     } else if (e8 == 3u) {
         car_frame_e8_mode3(node, span_base, wrap_n, frame);
     }

@@ -18,6 +18,12 @@ void model2_nvram_apply_options(void);
  * Returns 0, or -1 if the name is not recognized. */
 int model2_nvram_set_region_name(const char *name);
 
+/* GAME ASSIGNMENTS "GAME MODE" byte 0x20201d: normal|short|long|longest (0..3).
+ * Championship stage clocks come from the rank-list tables @ 0x47330.
+ * short and long share normal's row count; longest selects the longer rows.
+ * Returns 0, or -1 if the name is not recognized. */
+int model2_nvram_set_game_mode_name(const char *name);
+
 void model2_nvram_mark_dirty(void);
 void model2_nvram_sync_if_dirty(void);
 int model2_nvram_loaded(void);

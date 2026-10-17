@@ -42,6 +42,19 @@ static void frame_st(u8 *frame, u32 off, u32 v)
     memcpy(frame + off, &v, 4);
 }
 
+/* Cruise @ 0x2EEF0: g0 sample and g2 angles are the caller frame. */
+static u8 *ang_host_out;
+static u8 *ang_host_samp;
+
+static void ang_store(u32 ang, u32 off, u32 v)
+{
+    if (ang_host_out) {
+        memcpy(ang_host_out + off, &v, 4);
+        return;
+    }
+    i960_st_u32(I960_ABS, ang, off, v);
+}
+
 static u32 fmul(u32 a, u32 b)
 {
     return (u32)i960_f64_to_u32(i960_u32_to_f64(a) * i960_u32_to_f64(b));
@@ -82,7 +95,9 @@ void game_start_race_obj_road_angles(void *arg0, u32 arg1, u32 arg2)
     fp = (uintptr_t)frame;
     sp = sp + 0x70u;
 
-    if (model2_ram_mut(samp_va) == NULL && arg0 != NULL)
+    if (ang_host_samp != NULL)
+        samp_host = ang_host_samp;
+    else if (arg0 != NULL && model2_ram_mut(samp_va) == NULL)
         samp_host = (u8 *)arg0;
 
     if (nrm == 0u || ang == 0u)
@@ -162,7 +177,7 @@ void game_start_race_obj_road_angles(void *arg0, u32 arg1, u32 arg2)
     frame_st(frame, 0x64, b1);
     frame_st(frame, 0x68, b2);
     yaw = atan2_bits(b2, b0 ^ 0x80000000u);
-    i960_st_u32(I960_ABS, ang, 4, yaw);
+    ang_store(ang, 4, yaw);
 
     /* @0x2F72C–0x2F750: 0x25; 0x2a(-yaw); 0x2c(basis @ 0x40). */
     i960_mmio_write_u32(0x884000, 0x12802525u);
@@ -182,7 +197,7 @@ void game_start_race_obj_road_angles(void *arg0, u32 arg1, u32 arg2)
 
     /* @0x2F7B0: atanr rz, ry → pitch @ ang. */
     pitch = atan2_bits(rz, ry);
-    i960_st_u32(I960_ABS, ang, 0, pitch);
+    ang_store(ang, 0, pitch);
 
     /* @0x2F7C0–0x2F838: 0x25; 0x29(-pitch); 0x2a(-yaw); 0x2c(cross @ 0x50). */
     i960_mmio_write_u32(0x884000, 0x12802525u);
@@ -204,7 +219,7 @@ void game_start_race_obj_road_angles(void *arg0, u32 arg1, u32 arg2)
 
     /* @0x2F874: atanr rx, ry → roll @ ang+8; 0x21 pop. */
     roll = atan2_bits(rx, ry);
-    i960_st_u32(I960_ABS, ang, 8, roll);
+    ang_store(ang, 8, roll);
     i960_mmio_write_u32(0x884000, 0x10802121u);
 
     if (!logged) {
@@ -220,4 +235,13 @@ void game_start_race_obj_road_angles(void *arg0, u32 arg1, u32 arg2)
 done:
     fp = fp_save;
     sp = sp_save;
+}
+
+void game_start_race_obj_road_angles_host(void *samp, u32 nrm, void *ang)
+{
+    ang_host_samp = (u8 *)samp;
+    ang_host_out = (u8 *)ang;
+    game_start_race_obj_road_angles(samp, nrm, ang != NULL ? 1u : 0u);
+    ang_host_out = NULL;
+    ang_host_samp = NULL;
 }

@@ -77,7 +77,8 @@ void game_start_race_frame(u32 arg0, u32 arg1, u32 arg2)
     game_start_race_obj_bind((u32)g0, 0, 0);
 
     g0 = i960_ld_u32(I960_WORKRAM, 0x20aac0, 0);
-    /* @0x1BC5x: list-flag prep + PRG budget → 0x214344 (was silent call_rom). */
+    /* @0x1BC50 call 0x1C2A0: g14 becomes the return address, then prep stores it. */
+    g14 = 0x1bc54u;
     game_start_race_list_flag_prep((u32)g0, 0, 0);
     game_start_race_prg_budget(0, 0, 0);
 
@@ -234,14 +235,17 @@ void game_start_race_frame(u32 arg0, u32 arg1, u32 arg2)
     if (i960_ld_u32(I960_WORKRAM, 0x213a04, 0) == 1u)
         i960_st_u32(I960_WORKRAM, 0x213a04, 0, 2u);
 
+    /*
+     * @0x1BDE0: ldl 0xf00008,g4 — g5 is timer 3 @ 0xf0000c, not g4.
+     * cmpibne g5,0xfffff else mov 0,g5; lda 0x15f90(g5) → 0x20aac0.
+     * list_flag_prep on the next frame divides this into the rival LOD row.
+     */
     {
-        u32 lo = i960_ld_u32(I960_ABS, 0x00f00008u, 0);
-        u32 hi = i960_ld_u32(I960_ABS, 0x00f0000cu, 0);
+        u32 t3 = i960_ld_u32(I960_ABS, 0x00f0000cu, 0);
 
-        (void)hi;
-        if (lo == 0xfffffu)
-            lo = 0u;
-        i960_st_u32(I960_WORKRAM, 0x20aac0, 0, lo + 0x15f90u);
+        if (t3 == 0xfffffu)
+            t3 = 0u;
+        i960_st_u32(I960_WORKRAM, 0x20aac0, 0, t3 + 0x15f90u);
     }
     /*
      * @0x1BDxx: walk pool list — desert node frame does 0x20 then catalogs

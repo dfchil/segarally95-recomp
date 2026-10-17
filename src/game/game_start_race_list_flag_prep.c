@@ -47,7 +47,10 @@ void game_start_race_list_flag_prep(u32 arg0, u32 arg1, u32 arg2)
     memset(frame, 0, sizeof(frame));
     fp = (uintptr_t)frame;
     sp = sp + 16u;
-    g14 = 0;
+    /*
+     * No mov 0,g14. call 0x1C2A0 from race_frame leaves g14 = 0x1BC54,
+     * and @0x1C420 st g14,(r4) is the mode used when the body bit is clear.
+     */
 
     g4 = i960_ld_u32(I960_WORKRAM, 0x202230, 0);
     g1 = 0x2139f0u;
@@ -128,12 +131,16 @@ void game_start_race_list_flag_prep(u32 arg0, u32 arg1, u32 arg2)
             g5 += 4u;
             for (;;) {
                 g4 = i960_ld_u32(I960_WORKRAM, g5, 0);
-                if (!(i960_u32_to_f64(g6) > i960_u32_to_f64(g4)))
-                    break;
+                /*
+                 * @0x1C3AC–0x1C3B8: lda/addo of g1, g3, g2 happen before
+                 * bg, including the compare that fails.
+                 */
                 g1 += 4u;
                 g3 += 4u;
                 g2 += 1u;
                 g5 += 4u;
+                if (!(i960_u32_to_f64(g6) > i960_u32_to_f64(g4)))
+                    break;
             }
         }
 
@@ -180,9 +187,12 @@ void game_start_race_list_flag_prep(u32 arg0, u32 arg1, u32 arg2)
 
 done:
     if (!logged) {
-        lift_log( "lift: race_list_flag_prep mode230=%u g0_in=%u\n",
+        lift_log(
+                "lift: race_list_flag_prep mode230=%u g14=%#x desc_mode=%u flag=%u\n",
                 (unsigned)i960_ld_u32(I960_WORKRAM, 0x202230, 0),
-                (unsigned)g0_in);
+                (unsigned)g14,
+                (unsigned)i960_ld_u32(I960_WORKRAM, 0x2139f4, 0),
+                (unsigned)i960_ld_u32(I960_WORKRAM, 0x2139f0, 0));
         fflush(stderr);
         logged = 1;
     }

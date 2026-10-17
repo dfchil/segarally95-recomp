@@ -159,6 +159,58 @@ static void integrate_xz_clamp(u32 xyz_va)
 }
 
 /*
+ * @0x30320 as called from cruise @ 0x2EEF0.
+ * g0=node, g1=predicted XYZ, g2=&node+0x88.
+ * Pack and the xz clamp take a guest VA, so the triple is staged at
+ * node+0x14 and the published pose is restored before return.
+ */
+void game_start_race_obj_car_index_refresh(u32 node, u32 pred[3])
+{
+    u32 xyz_va = node + 0x14u;
+    u32 index_va = node + 0x88u;
+    u32 save_xyz[3];
+    u32 save_index;
+    i32 packed;
+
+    save_xyz[0] = i960_ld_u32(I960_ABS, xyz_va, 0);
+    save_xyz[1] = i960_ld_u32(I960_ABS, xyz_va, 4);
+    save_xyz[2] = i960_ld_u32(I960_ABS, xyz_va, 8);
+    i960_st_u32(I960_ABS, xyz_va, 0, pred[0]);
+    i960_st_u32(I960_ABS, xyz_va, 4, pred[1]);
+    i960_st_u32(I960_ABS, xyz_va, 8, pred[2]);
+
+    /* @0x30330 ld (g2),r7 — save the index word, then pack. */
+    save_index = i960_ld_u32(I960_ABS, index_va, 0);
+    geo_view_slot_word_pack(xyz_va, index_va, 0);
+    /* @0x3033C ldis; cmpible 0,g4 → ret when packed >= 0. */
+    packed = (i32)(int16_t)i960_ld_u16(I960_ABS, index_va, 0);
+    if (packed >= 0)
+        goto out;
+
+    /* @0x30344 miss → restore index, xz-clamp @ 0x30380, pack again. */
+    i960_st_u32(I960_ABS, index_va, 0, save_index);
+    integrate_xz_clamp(xyz_va);
+    geo_view_slot_word_pack(xyz_va, index_va, 0);
+    packed = (i32)(int16_t)i960_ld_u16(I960_ABS, index_va, 0);
+    if (packed >= 0)
+        goto out;
+
+    /* @0x30360 still miss → snap predicted to node+0x90/94/98, restore index. */
+    i960_st_u32(I960_ABS, xyz_va, 0, i960_ld_u32(I960_ABS, node, 0x90));
+    i960_st_u32(I960_ABS, xyz_va, 4, i960_ld_u32(I960_ABS, node, 0x94));
+    i960_st_u32(I960_ABS, xyz_va, 8, i960_ld_u32(I960_ABS, node, 0x98));
+    i960_st_u32(I960_ABS, index_va, 0, save_index);
+
+out:
+    pred[0] = i960_ld_u32(I960_ABS, xyz_va, 0);
+    pred[1] = i960_ld_u32(I960_ABS, xyz_va, 4);
+    pred[2] = i960_ld_u32(I960_ABS, xyz_va, 8);
+    i960_st_u32(I960_ABS, xyz_va, 0, save_xyz[0]);
+    i960_st_u32(I960_ABS, xyz_va, 4, save_xyz[1]);
+    i960_st_u32(I960_ABS, xyz_va, 8, save_xyz[2]);
+}
+
+/*
  * Road-index refresh @ 0x30320.
  * ABI: g0=node, g1=predicted XYZ VA (fp+0x70), g2=&node+0x88.
  *

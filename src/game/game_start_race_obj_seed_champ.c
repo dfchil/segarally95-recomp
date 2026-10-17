@@ -145,10 +145,14 @@ void game_start_race_obj_seed_champ(u32 arg0, u32 arg1, u32 arg2)
             w3 = i960_ld_u32(I960_ABS, cursor, 12);
             /* @0x21AA4: ld (r7) — type from 0x5c0960[remain]. */
             type_w = i960_ld_u32(I960_ABS, type_ptr, 0);
-            if (type_w == 0u)
-                w0 &= ~1u;
-            else
+            if (type_w == 0u) {
+                /* @0x21ABC: cmpi 0x2139cc; alterbit 0,0,g0 → 1 iff zero. */
+                u32 cc = i960_ld_u32(I960_WORKRAM, 0x2139cc, 0);
+
+                w0 = (cc == 0u) ? 1u : 0u;
+            } else {
                 w0 = type_w;
+            }
 
             champ_spawn(&count, w0, w1, w2, w3, road);
 
@@ -187,10 +191,14 @@ void game_start_race_obj_seed_champ(u32 arg0, u32 arg1, u32 arg2)
             w3 = i960_ld_u32(I960_ABS, cursor, 12);
             type_w = i960_ld_u32(I960_ABS, type_ptr, 0);
             c8 = i960_ld_u32(I960_WORKRAM, 0x2020c8, 0);
-            if (type_w != 0u && !(c8 == 0u && remain == 1))
+            if (type_w != 0u && !(c8 == 0u && remain == 1)) {
                 w0 = type_w;
-            else
-                w0 &= ~1u;
+            } else {
+                /* @0x21BF4: same alterbit 0,0,g0 after cmpi 0x2139cc. */
+                u32 cc = i960_ld_u32(I960_WORKRAM, 0x2139cc, 0);
+
+                w0 = (cc == 0u) ? 1u : 0u;
+            }
 
             champ_spawn(&count, w0, w1, w2, w3, road);
 

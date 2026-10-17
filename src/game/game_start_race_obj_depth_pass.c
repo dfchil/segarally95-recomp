@@ -76,10 +76,6 @@ void game_start_race_obj_depth_pass(u32 arg0, u32 arg1, u32 arg2)
     }
 
     for (idx = start; (i32)idx < (i32)count; idx++) {
-        double depth_f;
-        double y_f;
-        u32 flag;
-
         obj = i960_ld_u32(I960_WORKRAM, 0x213980u + (idx << 2), 0);
         if (obj == 0u) {
             scratch += 16u;
@@ -97,50 +93,76 @@ void game_start_race_obj_depth_pass(u32 arg0, u32 arg1, u32 arg2)
         i960_mmio_write_u32(0x884000, i960_ld_u32(I960_ABS, xyz, 4));
         i960_mmio_write_u32(0x884000, i960_ld_u32(I960_ABS, xyz, 8));
 
-        /* @0x23324–0x23348: FIFO readback → fp temps + scratch. */
+        /* @0x23324–0x23348: word0 in g6, word1 at fp+0x44, word2 at fp+0x48. */
         tx = i960_ld_u32(I960_MMIO, 0x884000, 0);
         ty = i960_ld_u32(I960_MMIO, 0x884000, 0);
         tz = i960_ld_u32(I960_MMIO, 0x884000, 0);
 
-        i960_st_u32(I960_WORKRAM, scratch, 4, 0); /* mode */
-        i960_st_u32(I960_WORKRAM, scratch, 8, xyz);
-        i960_st_u32(I960_WORKRAM, scratch, 0, 0); /* flag */
-        i960_st_u32(I960_WORKRAM, scratch, 12, tz);
+        i960_st_u32(I960_WORKRAM, scratch, 4, 0); /* @0x23340 st g14 mode */
+        i960_st_u32(I960_WORKRAM, scratch, 8, xyz); /* @0x23344 */
 
         /*
-         * @0x23394–0x23490: depth/y gates (cmprl vs 2.0 / 4.0 / 8.0 / −2.0).
-         * Doubles: 0x40000000=2, 0x40100000=4, 0x40200000=8, 0xc0080000=−2,
-         * 0x40080000=3 used as mul scale on the y<−2 branch.
+         * @0x232F0 shlo 1,r13 → 0x2c005858, then three zero words, then the
+         * three readback words again. @0x23394 ld is fp2, stored to +12
+         * only when the bit0 gate passes.
          */
-        depth_f = i960_u32_to_f64(tz);
-        y_f = i960_u32_to_f64(ty);
-        flag = 0;
+        i960_mmio_write_u32(0x884000, 0x16002c2cu << 1);
+        i960_mmio_write_u32(0x884000, 0u);
+        i960_mmio_write_u32(0x884000, 0u);
+        i960_mmio_write_u32(0x884000, 0u);
+        i960_mmio_write_u32(0x884000, tx);
+        i960_mmio_write_u32(0x884000, ty);
+        i960_mmio_write_u32(0x884000, tz);
+        {
+            u32 fp2 = i960_ld_u32(I960_MMIO, 0x884000, 0);
+            double z = i960_u32_to_f64(tz);
+            double lim_m2 = i960_rifl_read(0u, 0xc0000000u); /* shlo 30,3 */
+            double lim3 = i960_rifl_read(0u, 0x40080000u);
+            double lim4 = i960_rifl_read(0u, 0x40100000u);
+            double lim8 = i960_rifl_read(0u, 0x40200000u);
+            double lim_m3 = i960_rifl_read(0u, 0xc0080000u);
 
-        /* @0x233AC: depth > 2.0; @0x233D4: depth < 4.0 + 2139d8==0 → |x|<8 gate. */
-        if (depth_f > 2.0) {
-            if (depth_f < 4.0
-                && i960_ld_u32(I960_WORKRAM, 0x2139d8, 0) == 0u) {
-                double ax = i960_u32_to_f64(tx & 0x7fffffffu);
+            i960_st_u32(I960_WORKRAM, scratch, 0, 0u); /* @0x233B8 st g14 */
 
-                flag = (ax < 8.0) ? 0u : 1u;
-            } else {
-                flag = 1u;
-            }
-            if (flag != 0u) {
-                i960_st_u32(I960_WORKRAM, scratch, 12, tz);
-                i960_st_u32(I960_WORKRAM, scratch, 0, 1u);
-            }
-        }
+            /* @0x233AC cmprl / ble: skip bit0 when z <= -2. */
+            if (!(z <= lim_m2)) {
+                u32 bit;
 
-        /* @0x23440: y < 8.0; @0x23458: y > −2.0 → depth×3 into +12; always flag+=2. */
-        if (y_f < 8.0) {
-            if (y_f > -2.0) {
-                i960_st_u32(I960_WORKRAM, scratch, 12,
-                            (u32)i960_f64_to_u32(depth_f * 3.0));
+                /* @0x233D4 bge → mov 1 when z >= 3. */
+                if (z >= lim3) {
+                    bit = 1u;
+                } else if (i960_ld_u32(I960_WORKRAM, 0x2139d8, 0) != 0u) {
+                    /* @0x233E4 cmpibne → 0x23414 mov 1. */
+                    bit = 1u;
+                } else {
+                    double ax = i960_u32_to_f64(tx & 0x7fffffffu);
+
+                    /*
+                     * @0x2340C mov 0; @0x23410 bge over the mov 1.
+                     * |x| >= 4 leaves bit 0; |x| < 4 sets it.
+                     */
+                    bit = (ax >= lim4) ? 0u : 1u;
+                }
+                if (bit != 0u) {
+                    i960_st_u32(I960_WORKRAM, scratch, 12, fp2);
+                    i960_st_u32(I960_WORKRAM, scratch, 0, 1u);
+                }
             }
-            {
-                u32 f = i960_ld_u32(I960_WORKRAM, scratch, 0);
-                i960_st_u32(I960_WORKRAM, scratch, 0, f + 2u);
+
+            /* @0x23440 bge skip when z >= 8. Both tests use fp1, the same z. */
+            if (z < lim8) {
+                /* @0x23458 bge skip the mul when z >= -3.
+                 * @0x23460 movr fp2 — scale the 0x58 length, not z. */
+                if (z < lim_m3) {
+                    i960_st_u32(I960_WORKRAM, scratch, 12,
+                                (u32)i960_f64_to_u32(
+                                    i960_u32_to_f64(fp2) * lim3));
+                }
+                {
+                    u32 f = i960_ld_u32(I960_WORKRAM, scratch, 0);
+
+                    i960_st_u32(I960_WORKRAM, scratch, 0, f + 2u);
+                }
             }
         }
 
