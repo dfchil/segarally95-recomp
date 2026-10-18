@@ -235,10 +235,11 @@ static u32 mode1_blend(u32 node, u8 *frame)
         ns(node, 0x30u, g4);
     }
 
-    /* @0x2EC80: both sides. r13 stays the 0x2141ec word. */
+    /* @0x2EC80: both sides. r13 stays the 0x2141ec word.
+     * fp+0x58 stays the table_index_b height. The epilogue at 0x2EE58
+     * adds it to fp+0x84; nothing in 0x2EAA0–0x2EC9C stores this slot. */
     ns(node, 0x64u, g5);
     g5 = f_sub(nd(node, 0x30u), t124);
-    fst(frame, 0x58u, s58);
     game_start_race_obj_road_angles_host(frame + 0x40u, node + 0x2cu,
                                          frame + 0x90u);
     ns(node, 0x30u, g5);
