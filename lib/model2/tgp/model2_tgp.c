@@ -349,6 +349,16 @@ static void copro_matrix_sanitize(void)
         copro_matrix_identity();
 }
 
+/* ldis/ldos halfword. 0x8000 = pi, same domain as 0x32/0x33/0x34. */
+static float copro_half_turn(u32 bits)
+{
+    i32 half = (i32)(bits & 0xffffu);
+
+    if ((half & 0x8000) != 0)
+        half -= 0x10000;
+    return (float)half * (3.14159265358979323846f / 32768.f);
+}
+
 static void copro_rotate_x(float angle)
 {
     /*
@@ -913,6 +923,38 @@ static void copro_finish_cmd(void)
             }
         }
         break;
+    case 0x2f005e5eu:
+        /*
+         * Kind 6 draw @ 0x2B5F0. Firmware @ 0x679 is 0x332 then 0x652.
+         * 0x27's jump entry is 0x332, so the first three words are a
+         * translate. No 0x25b/0x14e/0x26f: the matrix stays for 0x5f.
+         * The i960 has already pushed (0x20). The four 0x652 words are
+         * the same eye/side packing 0x5d ignores.
+         */
+        if (g_copro_in_n >= 7u)
+            copro_translate(u2f(g_copro_in[0]), u2f(g_copro_in[1]),
+                            u2f(g_copro_in[2]));
+        break;
+    case 0x2f805f5fu:
+        /*
+         * Keyframe @ 0x2B31C. Firmware @ 0x67b:
+         *   0x25b push, 0x332 translate, 0x3a0, 0x35f, 0x14e emit, 0x26f pop.
+         * 0x3a0 joins the 0x2b roll body at 0x3ab. 0x35f joins the 0x29
+         * pitch body at 0x36a. Five words: xyz, then two sign-extended
+         * halves (ldos @ rec+12 and rec+16).
+         */
+        if (g_copro_in_n >= 5u) {
+            float saved[12];
+
+            memcpy(saved, g_copro_matrix, sizeof(saved));
+            copro_translate(u2f(g_copro_in[0]), u2f(g_copro_in[1]),
+                            u2f(g_copro_in[2]));
+            copro_rotate_z(copro_half_turn(g_copro_in[3]));
+            copro_rotate_x(copro_half_turn(g_copro_in[4]));
+            tgp_emit_geo_matrix(g_copro_matrix);
+            memcpy(g_copro_matrix, saved, sizeof(saved));
+        }
+        break;
     case 0x14802929u:
         if (g_copro_in_n >= 1u) {
             g_copro_ang_x = u2f(g_copro_in[0]);
@@ -1082,7 +1124,11 @@ static void copro_start_cmd(u32 marker)
         g_copro_need = 6;
         break;
     case 0x2e805d5du:
+    case 0x2f005e5eu:
         g_copro_need = 7;
+        break;
+    case 0x2f805f5fu:
+        g_copro_need = 5;
         break;
     case 0x2c805959u:
     case 0x2c005858u:
@@ -1226,6 +1272,8 @@ static int copro_is_marker(u32 value)
     case 0x1f003e3eu:
     case 0x2e005c5cu:
     case 0x2e805d5du:
+    case 0x2f005e5eu:
+    case 0x2f805f5fu:
     case 0x2c805959u:
     case 0x2c005858u:
     case 0x28005050u:

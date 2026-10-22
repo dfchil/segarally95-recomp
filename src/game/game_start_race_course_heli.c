@@ -10,8 +10,10 @@
  *
  * Keyframe player @ 0x280D0. g0=table, g1=index, g2=step, g3=wrap.
  *
+ * Kind 1 draw @ 0x439D0 / init @ 0x43B20. Same 0x280D0 player, g3=1.
+ *
  * source: disasm/maincpu/maincpu_0280d0, 0442d0, 044540, 043ea0,
- *         044240, 043c20
+ *         044240, 043c20, 0439d0
  */
 // @rom 0x280d0 +0x1f0 game_course_keyframe_draw
 // @rom 0x442d0 +0x26c game_start_race_course_obj_draw_5
@@ -207,6 +209,8 @@ void game_start_race_course_obj_draw_5(u32 arg0, u32 arg1, u32 arg2)
 
     idx = nd(node, 0x54u);
     step = nd(node, 0x58u);
+    /* call 0x280d0 @ 0x44420; g14 is 0x44424 for the keyframe and fly_step. */
+    g14 = 0x44424u;
     ns(node, 0x54u, game_course_keyframe_draw(0x005e2960u, idx, step, 0u));
     fly_step(node);
 }
@@ -435,4 +439,83 @@ void game_start_race_course_obj_init_3(u32 arg0, u32 arg1, u32 arg2)
           / i960_rifl_read(0u, 0x406fe000u);
     yaw *= i960_rifl_read(0x54442d18u, 0x401921fbu);
     ns(node, 0x28u, (u32)i960_f64_to_u32(yaw));
+}
+
+/*
+ * Kind 1 @ 0x439D0 / init @ 0x43B20. Two desert records (spans 68 and 229).
+ * Both keyframe calls are 0x280D0 with g3=1 (hold at limit-1).
+ * Rng @ 0x5CCE8 clears g14, so the init index store is 0.
+ */
+void game_start_race_course_obj_draw_1(u32 arg0, u32 arg1, u32 arg2)
+{
+    u32 node = arg0 != 0u ? arg0 : (u32)g0;
+    u32 phase;
+    u32 idx;
+    u32 step;
+    u32 countdown;
+    u32 ret;
+
+    (void)arg1;
+    (void)arg2;
+
+    fifo(0x10002020u);
+    fifo(0x13802727u);
+    fifo(nd(node, 0x18u));
+    fifo(nd(node, 0x1cu));
+    fifo(nd(node, 0x20u));
+    fifo(0x15002a2au);
+    fifo(nd(node, 0x28u));
+
+    phase = nd(node, 0x60u);
+    idx = nd(node, 0x54u);
+    step = nd(node, 0x58u);
+    if (phase != 0u) {
+        /* call 0x280d0 @ 0x43A54. Return is not stored. */
+        g14 = 0x43a58u;
+        (void)game_course_keyframe_draw(0x005e2890u, idx, step, 1u);
+        ns(node, 0x60u, phase - 1u);
+    } else {
+        /* call 0x280d0 @ 0x43A78. addo 31,28 → 59. */
+        g14 = 0x43a7cu;
+        ret = game_course_keyframe_draw(0x005e2890u, idx, step, 1u);
+        ns(node, 0x54u, ret);
+        if (ret == (31u + 28u) || ret == 0u)
+            ns(node, 0x60u, geo_rng_u8(node, 0u, 0u) & 0x17fu);
+    }
+
+    countdown = nd(node, 0x64u);
+    idx = nd(node, 0x5cu);
+    if (countdown != 0u) {
+        /* call 0x280d0 @ 0x43ABC. g2 is 1, not the node step. */
+        g14 = 0x43ac0u;
+        (void)game_course_keyframe_draw(0x005e2900u, idx, 1u, 1u);
+        ns(node, 0x64u, countdown - 1u);
+    } else {
+        /* call 0x280d0 @ 0x43AE0. */
+        g14 = 0x43ae4u;
+        ret = game_course_keyframe_draw(0x005e2900u, idx, 1u, 1u);
+        ns(node, 0x5cu, ret);
+        if (ret == 0u)
+            ns(node, 0x64u, geo_rng_u8(node, 0u, 0u) & 0xffu);
+    }
+    fifo(0x10802121u);
+}
+
+void game_start_race_course_obj_init_1(u32 arg0, u32 arg1, u32 arg2)
+{
+    u32 node = arg0 != 0u ? arg0 : (u32)g0;
+    u32 countdown;
+
+    (void)arg1;
+    (void)arg2;
+
+    /* Incoming g14 is the record_copy callx link, stored before either rng. */
+    ns(node, 0x5cu, (u32)g14);
+    ns(node, 0x60u, geo_rng_u8(node, 0u, 0u) & 0xffu);
+    countdown = geo_rng_u8(node, 0u, 0u) & 0xffu;
+    ns(node, 0x58u, 1u);
+    /* 0x5CCE8: mov 0,g14 before bx, so +0x54 is 0. */
+    ns(node, 0x54u, 0u);
+    ns(node, 4u, 0x005e29d0u);
+    ns(node, 0x64u, countdown);
 }

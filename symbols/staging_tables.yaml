@@ -129,3 +129,9 @@ tables:
       - { staged: 0x005e3540, rom: 0x00044540, fn: game_start_race_course_obj_init_5 }
       - { staged: 0x005e2ea0, rom: 0x00043ea0, fn: game_start_race_course_obj_draw_3 }
       - { staged: 0x005e3240, rom: 0x00044240, fn: game_start_race_course_obj_init_3 }
+      - { staged: 0x005e29d0, rom: 0x000439d0, fn: game_start_race_course_obj_draw_1 }
+      - { staged: 0x005e2b20, rom: 0x00043b20, fn: game_start_race_course_obj_init_1 }
+      - { staged: 0x005ca5b0, rom: 0x0002b5b0, fn: game_start_race_course_obj_draw_6 }
+      - { staged: 0x005ca6d0, rom: 0x0002b6d0, fn: game_start_race_course_obj_init_6 }
+      - { staged: 0x005ca700, rom: 0x0002b700, fn: game_start_race_course_obj_draw_8 }
+      - { staged: 0x005ca710, rom: 0x0002b710, fn: game_start_race_course_obj_init_8 }

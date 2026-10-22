@@ -23,8 +23,14 @@ void game_start_race_course_obj_draw_19(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_course_obj_init_19(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_course_obj_draw_5(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_course_obj_init_5(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_6(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_6(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_8(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_8(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_course_obj_draw_3(u32 arg0, u32 arg1, u32 arg2);
 void game_start_race_course_obj_init_3(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_draw_1(u32 arg0, u32 arg1, u32 arg2);
+void game_start_race_course_obj_init_1(u32 arg0, u32 arg1, u32 arg2);
 
 #define GAME_MODE_DISPATCH_BASE 0x005a2110u
 
@@ -346,6 +352,24 @@ int i960_host_staging_call_lifted(u32 workram_or_rom_pc)
         return 1;
     case 0x00044240u:
         game_start_race_course_obj_init_3((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x000439d0u:
+        game_start_race_course_obj_draw_1((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x00043b20u:
+        game_start_race_course_obj_init_1((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0002b5b0u:
+        game_start_race_course_obj_draw_6((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0002b6d0u:
+        game_start_race_course_obj_init_6((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0002b700u:
+        game_start_race_course_obj_draw_8((u32)g0, (u32)g1, (u32)g2);
+        return 1;
+    case 0x0002b710u:
+        game_start_race_course_obj_init_8((u32)g0, (u32)g1, (u32)g2);
         return 1;
     case 0x00043790u:
         game_start_race_desert_node_init((u32)g0, (u32)g1, (u32)g2);

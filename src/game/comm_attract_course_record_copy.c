@@ -80,6 +80,8 @@ void comm_attract_course_record_copy(void *arg0, u32 arg1, u32 arg2)
 
     g0 = dst_va;
     if (handler != 0) {
+        /* callx @ 0x3F2A4; the next instruction is 0x3F2A8. */
+        g14 = 0x3f2a8u;
         if (!i960_host_staging_call_lifted(handler))
             i960_call_indirect(handler);
     }

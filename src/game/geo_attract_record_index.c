@@ -91,6 +91,8 @@ void geo_attract_record_index(u32 arg0, u32 arg1, u32 arg2)
                     handler = i960_ld_u32(I960_ABS, rec_va, 4);
                     if (handler != 0u) {
                         g0 = rec_va;
+                        /* callx @ 0x3F478 leaves g14 = 0x3F47C. */
+                        g14 = 0x3f47cu;
                         if (!i960_host_staging_call_lifted(handler))
                             i960_call_indirect(handler);
                         callx++;
